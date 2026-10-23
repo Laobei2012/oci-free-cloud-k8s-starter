@@ -17,3 +17,4 @@ cluster_domain             = "k8s.example.com"
 
 # the namespace and bucket values in backend.hcl
 state_namespace = "your-object-storage-namespace"
+state_bucket    = "terraform-states"

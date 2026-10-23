@@ -12,7 +12,6 @@
     ]
   },
   "groupName": "all",
-  "timezone": "Europe/Berlin",
   "schedule": [
     "before 3am on Monday"
   ],

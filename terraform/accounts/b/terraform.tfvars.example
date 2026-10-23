@@ -9,4 +9,6 @@ account_a_region = "us-phoenix-1"
 ssh_public_key       = "ssh-ed25519 AAAA... you@example.com"
 # OCID of the account A group that runs terraform/accounts/a (group_name there)
 account_a_group_id = "ocid1.group.oc1..example"
+# the namespace and bucket values in backend.hcl
 state_namespace    = "your-object-storage-namespace"
+state_bucket       = "terraform-states"

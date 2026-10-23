@@ -68,7 +68,7 @@ You do these steps once, on your machine. Until step 11, the workflow `terraform
 
 6. Apply `terraform/accounts/a`. It writes `terraform/.kube.config`. Set the output `zone_prefix` as `oci_zone_prefix_a` in `gitops/clusters/oci/cluster-vars.yaml`.
 
-7. Set your other values in `cluster-vars.yaml`. Leave `lb_ip` and `lb_security_group_id` for steps 9 and 10. Commit the `terraform.tfvars` files, `terraform/.kube.config` and `cluster-vars.yaml`, and push them to `main`.
+7. Set your other values in `cluster-vars.yaml`. Leave `lb_ip` and `lb_security_group_id` for steps 9 and 10. Commit the `backend.hcl` and `terraform.tfvars` files, `terraform/.kube.config` and `cluster-vars.yaml`, and push them to `main`. These files have no secrets. CI does not read `backend.hcl`, but the next person who runs a stack on a machine needs it.
 
 8. Apply `terraform/clusters/oci`. Flux starts and syncs `gitops/clusters/oci` of your repository. If the apply fails on the `ClusterSecretStore`, wait until Flux installs external-secrets, and apply again.
 
@@ -119,3 +119,5 @@ If you never use account B, you can delete `terraform/accounts/b`, `terraform/gi
 ## Update to a new release
 
 Install the [Renovate app](https://github.com/apps/renovate) on your repository. Renovate opens one pull request that changes the module tag in each `main.tf` and in `gitops/clusters/oci/platform-source.yaml`. Keep the two tags the same. Read the release notes of the module before you merge.
+
+Renovate opens pull requests before 3am UTC on Monday. To use your own time zone, add `"timezone"` to `renovate.json`, for example `"timezone": "America/Vancouver"`.
