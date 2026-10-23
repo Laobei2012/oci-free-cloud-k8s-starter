@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and set your own values.
+compartment_id = "ocid1.tenancy.oc1..example"
+tenancy_id     = "ocid1.tenancy.oc1..example"
+# The stack reads the vault secrets terraform-gh-token and
+# terraform-github-app-pem, see terraform/README.md.
+vault_id       = "ocid1.vault.oc1.phx.example"
+vault_key_id   = "ocid1.key.oc1.phx.example"
+email          = "admin@example.com"
+
+# your copy of the starter: https://github.com/<gh_org>/<gh_repository>
+gh_org                     = "example-org"
+gh_repository              = "example-live"
+github_app_id              = "123456"
+github_app_installation_id = "12345678"
+region                     = "us-phoenix-1"
+cluster_domain             = "k8s.example.com"
+
+# the namespace and bucket values in backend.hcl
+state_namespace = "your-object-storage-namespace"
