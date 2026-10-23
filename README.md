@@ -40,7 +40,7 @@ You need these tools on your machine: Terraform 1.12 or later, the `oci` CLI wit
 
 ## First run
 
-You do these steps once, on your machine. Until step 9, the workflow `terraform.yml` skips all jobs, so CI does not apply at the same time as you.
+You do these steps once, on your machine. Until step 11, the workflow `terraform.yml` skips all jobs, so CI does not apply at the same time as you.
 
 1. Click "Use this template" on GitHub to make your repository. Then clone it.
 
@@ -68,18 +68,23 @@ You do these steps once, on your machine. Until step 9, the workflow `terraform.
 
 6. Apply `terraform/accounts/a`. It writes `terraform/.kube.config`. Set the output `zone_prefix` as `oci_zone_prefix_a` in `gitops/clusters/oci/cluster-vars.yaml`.
 
-7. Set your other values in `cluster-vars.yaml`. Leave `lb_ip` and `lb_security_group_id` for step 8. Commit the `terraform.tfvars` files, `terraform/.kube.config` and `cluster-vars.yaml`, and push them to `main`.
+7. Set your other values in `cluster-vars.yaml`. Leave `lb_ip` and `lb_security_group_id` for steps 9 and 10. Commit the `terraform.tfvars` files, `terraform/.kube.config` and `cluster-vars.yaml`, and push them to `main`.
 
-8. Apply `terraform/clusters/oci`. Flux starts and syncs `gitops/clusters/oci` of your repository. If the apply fails on the `ClusterSecretStore`, wait until Flux installs external-secrets, and apply again. Then set the two load balancer values in `cluster-vars.yaml`, and push again:
+8. Apply `terraform/clusters/oci`. Flux starts and syncs `gitops/clusters/oci` of your repository. If the apply fails on the `ClusterSecretStore`, wait until Flux installs external-secrets, and apply again.
+
+9. Set `lb_security_group_id` in `cluster-vars.yaml` to the ID that this command shows. Push this change, then wait until OCI makes the load balancer of Envoy.
 
    ```
    oci network nsg list --compartment-id <compartment_id> --display-name ingress --query 'data[0].id' --raw-output
-   kubectl --kubeconfig terraform/.kube.config -n envoy-gateway get service -o wide
    ```
 
-   The first command shows `lb_security_group_id`. When OCI made the load balancer, the second command shows its `EXTERNAL-IP`, which is `lb_ip`.
+10. Set `lb_ip` in `cluster-vars.yaml` to the `EXTERNAL-IP` that this command shows, and push again. While the column shows `<pending>`, OCI did not make the load balancer yet.
 
-9. Turn on CI with the repository variables in the next section.
+    ```
+    kubectl --kubeconfig terraform/.kube.config -n envoy-gateway get service -o wide
+    ```
+
+11. Turn on CI with the repository variables in the next section.
 
 From now on, you change Terraform with a pull request. Read the plan comment, then comment `/apply`, then merge. [terraform/README.md](terraform/README.md#ci) has the details.
 
@@ -101,7 +106,7 @@ Only the repository owner can start `/apply`. If an organization owns your repos
 
 ## Add account B
 
-The stacks of account B keep their state in the bucket of account A.
+Do steps 1 to 3 on your machine, as in the first run. CI cannot log in to account B before step 5. The stacks of account B keep their state in the bucket of account A.
 
 1. Apply `terraform/github-oidc/b`. In that folder, add the secret `OCI_CLIENT_B` with the command of step 5.
 2. Set `account_b_tenancy_id` and `account_b_region` in `terraform/accounts/a`, and apply it.
