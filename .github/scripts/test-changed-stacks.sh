@@ -3,6 +3,8 @@
 set -euo pipefail
 
 script=$PWD/.github/scripts/changed-stacks.sh
+# account B counts only with OCI_TENANCY_B, as in CI
+export OCI_TENANCY_B=ocid1.tenancy.oc1..test
 fails=0
 
 expect() {
@@ -23,6 +25,11 @@ expect "no Terraform file" '[]' \
   "$(printf '%s\n' README.md terraform/accounts/a/backend.hcl.example | "$script")"
 expect "all stacks" '["accounts/a","accounts/b","clusters/oci"]' \
   "$("$script" --all < /dev/null)"
+
+expect "account B folder without OCI_TENANCY_B" '["accounts/a","clusters/oci"]' \
+  "$(printf '%s\n' terraform/accounts/a/main.tf terraform/accounts/b/main.tf terraform/clusters/oci/main.tf | OCI_TENANCY_B='' "$script")"
+expect "all stacks without OCI_TENANCY_B" '["accounts/a","clusters/oci"]' \
+  "$(OCI_TENANCY_B='' "$script" --all < /dev/null)"
 
 # a copy without account B
 tmp=$(mktemp -d)

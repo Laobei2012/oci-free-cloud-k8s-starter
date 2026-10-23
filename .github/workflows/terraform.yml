@@ -136,6 +136,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
           INPUT_STACK: ${{ inputs.stack }}
+          OCI_TENANCY_B: ${{ vars.OCI_TENANCY_B }}
         run: |
           changed() { .github/scripts/changed-stacks.sh; }
           case "$EVENT" in
@@ -152,6 +153,10 @@ jobs:
             workflow_dispatch)
               if [ ! -d "terraform/$INPUT_STACK" ]; then
                 echo "::error::terraform/$INPUT_STACK does not exist in this repository"
+                exit 1
+              fi
+              if [ "$INPUT_STACK" = accounts/b ] && [ -z "$OCI_TENANCY_B" ]; then
+                echo "::error::accounts/b needs the repository variable OCI_TENANCY_B"
                 exit 1
               fi
               stacks="[\"$INPUT_STACK\"]"

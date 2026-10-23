@@ -4,7 +4,9 @@
 # Only Terraform inputs count: *.tf, *.tfvars, the provider lock file, and the
 # files/ folder that a stack reads with file() or templatefile().
 # --all prints every stack, and ignores stdin.
-# A stack counts only if its folder exists, so a copy without account B works.
+# A stack counts only if its folder exists. accounts/b counts only if
+# OCI_TENANCY_B is set, because CI cannot log in to account B without it.
+# So a copy without account B works, with or without the accounts/b folder.
 set -euo pipefail
 
 all=false
@@ -12,6 +14,7 @@ if [ "${1:-}" = --all ]; then all=true; else files=$(cat); fi
 stacks=()
 for stack in accounts/a accounts/b clusters/oci; do
   [ -d "terraform/$stack" ] || continue
+  if [ "$stack" = accounts/b ] && [ -z "${OCI_TENANCY_B:-}" ]; then continue; fi
   if $all || grep -qE "^terraform/$stack/(.+\.tf|.+\.tfvars|\.terraform\.lock\.hcl|files/.+)\$" <<< "$files"; then
     stacks+=("$stack")
   fi
