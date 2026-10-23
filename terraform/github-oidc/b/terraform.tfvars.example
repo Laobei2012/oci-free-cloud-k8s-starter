@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and set your own values.
+tenancy_id = "ocid1.tenancy.oc1..example"
+region     = "us-chicago-1"
+
+# your copy of the starter, as owner/name
+repository = "example-org/example-live"
+# Without immutable OIDC subjects, this is repo:<owner>/<name>.
+# To see if your repository uses immutable subjects, run:
+#   gh api repos/<owner>/<name>/actions/oidc/customization/sub
+# With immutable subjects, it is repo:<owner>@<owner_id>/<name>@<repo_id>.
+subject_prefix = "repo:example-org/example-live"

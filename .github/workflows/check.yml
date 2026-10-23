@@ -11,6 +11,24 @@ permissions:
   contents: read
 
 jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.4
+      - run: terraform fmt -check -recursive terraform
+      # init downloads the modules at the pinned tag, without a backend
+      - name: Validate each stack
+        run: |
+          for dir in $(find terraform -name '*.tf' -exec dirname {} \; | sort -u); do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false > /dev/null
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
   renovate:
     runs-on: ubuntu-latest
     steps:
