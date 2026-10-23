@@ -60,12 +60,14 @@ jobs:
     outputs:
       ready: ${{ steps.check.outputs.ready }}
     steps:
-      # A pull request from a fork gets no secrets, so it cannot log in to OCI.
+      # A pull request from another repository gets no secrets, so it cannot log
+      # in to OCI. head.repo.fork is not the test: it is also true for a pull
+      # request inside a copy that someone made with "Fork".
       - id: check
         env:
           GH_TOKEN: ${{ github.token }}
           SET_UP: ${{ vars.OCI_TENANCY_A != '' }}
-          FORK: ${{ github.event.pull_request.head.repo.fork || false }}
+          FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
           EVENT: ${{ github.event_name }}
           SHA: ${{ github.event.pull_request.head.sha }}
           PR: ${{ github.event.issue.number }}
