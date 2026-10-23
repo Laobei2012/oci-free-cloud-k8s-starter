@@ -35,3 +35,4 @@ output "account_b_peering_status" {
 output "zone_prefix" {
   value = module.account_a.zone_prefix
 }
+# gate test
