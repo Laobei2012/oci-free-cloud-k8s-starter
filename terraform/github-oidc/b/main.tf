@@ -1,6 +1,6 @@
 # see .github/workflows/terraform.yml
 module "github_oidc" {
-  source = "git::https://github.com/Laobei2012/oci-free-cloud-k8s-module.git//terraform/modules/github-oidc?ref=v0.1.6"
+  source = "git::https://github.com/Laobei2012/oci-free-cloud-k8s-module.git//terraform/modules/github-oidc?ref=v0.1.7"
 
   tenancy_id     = var.tenancy_id
   repository     = var.repository

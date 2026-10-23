@@ -1,5 +1,5 @@
 module "account_a" {
-  source = "git::https://github.com/Laobei2012/oci-free-cloud-k8s-module.git//terraform/modules/account-a?ref=v0.1.6"
+  source = "git::https://github.com/Laobei2012/oci-free-cloud-k8s-module.git//terraform/modules/account-a?ref=v0.1.7"
 
   oci_config_profile           = var.oci_config_profile
   kubeconfig_path              = "../../.kube.config"

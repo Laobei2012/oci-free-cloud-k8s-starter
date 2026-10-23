@@ -1,5 +1,5 @@
 module "account_b" {
-  source = "git::https://github.com/Laobei2012/oci-free-cloud-k8s-module.git//terraform/modules/account-b?ref=v0.1.6"
+  source = "git::https://github.com/Laobei2012/oci-free-cloud-k8s-module.git//terraform/modules/account-b?ref=v0.1.7"
 
   k8s_version                  = data.terraform_remote_state.infra.outputs.k8s_version
   k8s_private_endpoint         = data.terraform_remote_state.infra.outputs.k8s_private_endpoint
