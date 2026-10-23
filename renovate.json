@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "docker:disable"
+  ],
+  "terraform": {},
+  "flux": {
+    "managerFilePatterns": [
+      "/^gitops/.+\\.ya?ml$/"
+    ]
+  },
+  "groupName": "all",
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "before 3am on Monday"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The tag of the GitRepository platform. The flux manager does not read GitRepository tags.",
+      "managerFilePatterns": [
+        "/^gitops/clusters/.+/platform-source\\.yaml$/"
+      ],
+      "matchStrings": [
+        "url: https://github\\.com/(?<depName>\\S+?)(?:\\.git)?\\s+ref:\\s+tag: (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-tags"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchCategories": [
+        "docker"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "One PR bumps the Terraform module ref and the Flux tag together.",
+      "matchPackageNames": [
+        "Laobei2012/oci-free-cloud-k8s-module"
+      ],
+      "groupName": "oci-free-cloud-k8s-module"
+    }
+  ]
+}
