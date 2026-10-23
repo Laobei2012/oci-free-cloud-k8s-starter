@@ -1,0 +1,14 @@
+# Applies the apps for the worker nodes of account B. Leave this file out for
+# a cluster in account A only.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: platform-account-b
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./gitops/account-b
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: platform

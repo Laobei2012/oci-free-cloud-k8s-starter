@@ -1,0 +1,11 @@
+# The Flux entry point. The FluxInstance from terraform/clusters/oci syncs
+# gitops/clusters/oci, so keep this path.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: flux-system
+resources:
+  - cluster-vars.yaml
+  - platform-source.yaml
+  - platform.yaml
+  # With account B, add platform-account-b.yaml here.
+  - ../../apps

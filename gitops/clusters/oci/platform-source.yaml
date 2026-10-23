@@ -1,0 +1,12 @@
+# The shared apps from the public module repository, at one release tag.
+# Use the same tag as the ?ref= of the Terraform modules.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: platform
+  namespace: flux-system
+spec:
+  interval: 10m
+  url: https://github.com/Laobei2012/oci-free-cloud-k8s-module
+  ref:
+    tag: v0.1.6

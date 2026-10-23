@@ -1,0 +1,44 @@
+# The values of your cluster. Flux replaces ${name} in the shared manifests
+# with the values below. Replace each example value with your own.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-vars
+  namespace: flux-system
+data:
+  cluster_domain: k8s.example.com
+  acme_email: admin@example.com
+  # The GitHub organization and team whose members can log in with Dex.
+  github_org: example-org
+  github_team: admin
+  # A GitHub bot account with read-only access to Jenkins, and its team.
+  # The team lets the bot log in to Dex.
+  vigil_github_user: example-bot
+  vigil_github_team: readonly
+  # Your copy of the starter, which Flux syncs. Flux sends commit statuses to it.
+  github_repo_url: https://github.com/example-org/example-live
+  # The Slack channel that gets the Flux error messages. The bot must be in it.
+  flux_slack_channel_id: C0000000000
+  teleport_github_client_id: Ov23example
+  # The network security group "ingress" from terraform/clusters/oci, and the
+  # public IP of the Envoy load balancer that OCI makes for it. Set the group
+  # after the first apply of terraform/clusters/oci, then set the IP when the
+  # load balancer exists. README.md has the commands.
+  lb_ip: 203.0.113.10
+  lb_security_group_id: ocid1.networksecuritygroup.oc1.phx.example
+  oci_region: us-phoenix-1
+  # The zones of the nodes are <prefix>-AD-1 to -AD-3. Copy the output
+  # zone_prefix of terraform/accounts/a and terraform/accounts/b.
+  oci_zone_prefix_a: PHX
+  # Only with account B.
+  oci_zone_prefix_b: ORD
+  # Optional. Without these values, Loki runs on the OKE nodes and uses the
+  # default Longhorn class. With account B, you can move Loki to the account B
+  # nodes. Set the values before the first install of Loki, because Kubernetes
+  # cannot change the storage class of an existing Loki volume.
+  # loki_node_label: tenancy
+  # loki_node_value: account-b
+  # loki_storage_class: longhorn-account-b
+  # Each alert carries this name as the label cluster.
+  cluster_name: oci-phx
+  oci_object_storage_namespace: examplenamespace

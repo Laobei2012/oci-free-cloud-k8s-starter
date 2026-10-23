@@ -1,0 +1,5 @@
+# Your own apps for this cluster. Add a Flux Kustomization or a HelmRelease
+# for each app to the list below.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []

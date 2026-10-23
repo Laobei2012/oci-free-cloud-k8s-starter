@@ -29,6 +29,22 @@ jobs:
             echo "::endgroup::"
           done
 
+  gitops:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fluxcd/flux2/action@v2.9.6
+        with:
+          version: 2.9.6
+      # Flux replaces ${name} with the values of cluster-vars.yaml, as in the
+      # cluster. --strict fails on a name that cluster-vars.yaml does not have.
+      - name: Build gitops/clusters/oci
+        run: |
+          eval "$(yq '.data | to_entries | .[] | "export " + .key + "=" + (.value | @sh)' gitops/clusters/oci/cluster-vars.yaml)"
+          kubectl kustomize gitops/clusters/oci | flux envsubst --strict > /dev/null
+          kubectl kustomize gitops/apps > /dev/null
+          yq . gitops/clusters/oci/platform-account-b.yaml > /dev/null
+
   renovate:
     runs-on: ubuntu-latest
     steps:

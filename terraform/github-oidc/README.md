@@ -2,7 +2,7 @@
 
 The workflow [terraform.yml](../../.github/workflows/terraform.yml) runs Terraform against two OCI accounts and the OKE cluster. GitHub stores no OCI API key. Each job proves who it is with a token that GitHub signs, and OCI gives it a session token for one hour.
 
-The stack [a](a/) in this folder holds the login of account A. The stack [b](b/) holds the login of account B, if you use account B. You apply them on your machine, see [Why these stacks are local](#why-these-stacks-are-local).
+The stack [a](a/) in this folder holds the login of account A. The optional stack [b](b/) holds the login of account B. You apply them on your machine, see [Why these stacks are local](#why-these-stacks-are-local).
 
 ## What OIDC does
 
