@@ -1,0 +1,361 @@
+name: terraform
+
+# Pull request: plan each stack whose Terraform files the PR changes and post the plan as a comment.
+# "/apply" comment on a PR by the repo owner: apply the PR, merge only if it passes.
+# Push to main: apply each stack that the push changes, one at a time.
+# Manual run: plan or apply one stack.
+# The commit status terraform/applied says if the PR has changes that are not applied.
+# .github/scripts/changed-stacks.sh says which files count.
+# terraform/github-oidc/* is not here, you apply it on your machine.
+# Until the repository variable OCI_TENANCY_A is set, the gate job skips all
+# other jobs, see README.md.
+on:
+  # every PR, so that every PR gets the terraform/applied status
+  pull_request:
+  issue_comment:
+    types:
+      - created
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/accounts/**
+      - terraform/clusters/oci/**
+  workflow_dispatch:
+    inputs:
+      stack:
+        description: The stack to run
+        type: choice
+        options:
+          - accounts/a
+          - accounts/b
+          - clusters/oci
+      action:
+        description: Plan only, or plan and apply
+        type: choice
+        default: plan
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+  pull-requests: write
+  # the terraform/applied commit status
+  statuses: write
+  # the OIDC token for the OCI login
+  id-token: write
+
+jobs:
+  # an issue_comment run uses the workflow of main and the apply user, so only
+  # the repo owner can start it
+  gate:
+    if: >-
+      github.event_name != 'issue_comment' || (
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/apply') &&
+        github.event.comment.author_association == 'OWNER'
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      # A pull request from a fork gets no secrets, so it cannot log in to OCI.
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SET_UP: ${{ vars.OCI_TENANCY_A != '' }}
+          FORK: ${{ github.event.pull_request.head.repo.fork || false }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.issue.number }}
+        run: |
+          if [ "$SET_UP" = true ] && [ "$FORK" = false ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          if [ "$FORK" = true ]; then
+            reason="A pull request from a fork cannot plan"
+          else
+            reason="OCI is not set up"
+            echo "::notice::$reason: the repository variable OCI_TENANCY_A is empty, see README.md"
+          fi
+          case "$EVENT" in
+            # the token of a fork pull request cannot write a status
+            pull_request)
+              gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=success -f context=terraform/applied \
+                -f description="$reason" > /dev/null || echo "::warning::could not set terraform/applied"
+              ;;
+            issue_comment)
+              gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "/apply did nothing: $reason, see README.md"
+              ;;
+          esac
+
+  stacks:
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ steps.list.outputs.stacks }}
+      sha: ${{ steps.pr.outputs.sha }}
+    steps:
+      # the full history for git diff
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # the PR must contain all of main, or its apply undoes other merged changes
+      - id: pr
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.issue.number }}
+        run: |
+          gh pr view "$PR" --json headRefOid,isCrossRepository,state > pr.json
+          jq -e '.state == "OPEN" and (.isCrossRepository | not)' pr.json > /dev/null \
+            || { echo "::error::PR #$PR is not open, or it comes from a fork"; exit 1; }
+          sha=$(jq -r .headRefOid pr.json)
+          git fetch -q origin "refs/pull/$PR/head"
+          git merge-base --is-ancestor origin/main "$sha" \
+            || { echo "::error::PR #$PR is behind main, rebase it on main"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Comment the error on the PR
+        if: failure() && github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: gh pr comment "$PR" --body "/apply did not start, see $RUN"
+      # the changed files: of the PR against main, or of the push
+      - id: list
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_SHA: ${{ steps.pr.outputs.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          INPUT_STACK: ${{ inputs.stack }}
+        run: |
+          changed() { .github/scripts/changed-stacks.sh; }
+          case "$EVENT" in
+            pull_request) stacks=$(git diff --name-only "origin/$BASE_REF...$HEAD_SHA" | changed) ;;
+            issue_comment) stacks=$(git diff --name-only "origin/main...$PR_SHA" | changed) ;;
+            push)
+              # a new branch or a force push has no usable before commit, so plan every stack
+              if git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
+                stacks=$(git diff --name-only "$BEFORE" "$AFTER" | changed)
+              else
+                stacks=$(.github/scripts/changed-stacks.sh --all)
+              fi
+              ;;
+            workflow_dispatch)
+              if [ ! -d "terraform/$INPUT_STACK" ]; then
+                echo "::error::terraform/$INPUT_STACK does not exist in this repository"
+                exit 1
+              fi
+              stacks="[\"$INPUT_STACK\"]"
+              ;;
+          esac
+          echo "stacks=$stacks" >> "$GITHUB_OUTPUT"
+
+  terraform:
+    needs: stacks
+    if: needs.stacks.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    # an apply runs one stack at a time, because each stack reads the outputs
+    # of the stacks before it. A failed apply cancels the next applies.
+    strategy:
+      fail-fast: ${{ github.event_name != 'pull_request' }}
+      max-parallel: ${{ github.event_name == 'pull_request' && 3 || 1 }}
+      matrix:
+        stack: ${{ fromJSON(needs.stacks.outputs.stacks) }}
+    # one run at a time for each state file, also across workflow runs
+    concurrency:
+      group: terraform-${{ matrix.stack }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: terraform/${{ matrix.stack }}
+    env:
+      STACK: ${{ matrix.stack }}
+      PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+      # the profiles in ~/.oci/config hold session tokens, see .github/scripts/oci-session.sh
+      TF_VAR_oci_auth: SecurityToken
+      TF_VAR_account_a_auth: SecurityToken
+      TF_VAR_state_namespace: ${{ vars.OCI_STATE_NAMESPACE }}
+      TF_VAR_state_bucket: ${{ vars.OCI_STATE_BUCKET }}
+      OCI_CLI_AUTH: security_token
+    steps:
+      # an /apply run checks out the PR commit that the stacks job checked
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.stacks.outputs.sha }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+
+      # the kubeconfig runs "oci ce cluster generate-token"
+      - name: Install the OCI CLI
+        run: pipx install oci-cli
+
+      # a pull request gets the read-only plan user, main and /apply get the apply user
+      - name: Log in to OCI
+        env:
+          OCI_REGION_A: ${{ vars.OCI_REGION_A }}
+          OCI_TENANCY_A: ${{ vars.OCI_TENANCY_A }}
+          OCI_DOMAIN_A: ${{ vars.OCI_DOMAIN_A }}
+          OCI_CLIENT_A: ${{ secrets.OCI_CLIENT_A }}
+          OCI_REGION_B: ${{ vars.OCI_REGION_B }}
+          OCI_TENANCY_B: ${{ vars.OCI_TENANCY_B }}
+          OCI_DOMAIN_B: ${{ vars.OCI_DOMAIN_B }}
+          OCI_CLIENT_B: ${{ secrets.OCI_CLIENT_B }}
+        run: ../../../.github/scripts/oci-session.sh
+
+      # The backend block cannot use variables, so init gets the backend values
+      # here. On your machine, they are in backend.hcl.
+      - name: Init
+        env:
+          NAMESPACE: ${{ vars.OCI_STATE_NAMESPACE }}
+          BUCKET: ${{ vars.OCI_STATE_BUCKET }}
+          REGION: ${{ vars.OCI_REGION_A }}
+        run: |
+          case "$STACK" in
+            accounts/a) key=account-a ;;
+            accounts/b) key=account-b ;;
+            clusters/oci) key=cluster ;;
+          esac
+          terraform init -input=false -backend-config=auth=SecurityToken -backend-config=config_file_profile=DEFAULT \
+            -backend-config="region=$REGION" -backend-config="namespace=$NAMESPACE" -backend-config="bucket=$BUCKET" \
+            -backend-config="key=$key/terraform.tfstate"
+
+      # the plan user of a pull request can only read, so it cannot write the lock file.
+      # -detailed-exitcode: 0 no changes, 1 error, 2 changes
+      - name: Plan
+        id: plan
+        env:
+          LOCK: ${{ github.event_name != 'pull_request' }}
+        run: |
+          code=0
+          terraform plan -input=false -lock="$LOCK" -lock-timeout=5m -detailed-exitcode -out=tfplan || code=$?
+          if [ "$code" -eq 1 ]; then exit 1; fi
+          mkdir -p "$RUNNER_TEMP/plan-result"
+          if [ "$code" -eq 2 ]; then changes=true; else changes=false; fi
+          echo "$changes" > "$RUNNER_TEMP/plan-result/${STACK//\//-}"
+          echo "changes=$changes" >> "$GITHUB_OUTPUT"
+
+      # for the terraform/applied status
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: plan-result-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/plan-result/
+          retention-days: 1
+
+      - name: Comment the plan on the PR
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ github.event_name == 'issue_comment' && 'plan to apply' || 'plan' }}
+        run: |
+          # fold the older plan comments of this stack as outdated
+          # shellcheck disable=SC2016
+          gh api graphql --paginate -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F pr="$PR" -f query='
+            query($owner: String!, $name: String!, $pr: Int!, $endCursor: String) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $pr) {
+                  comments(first: 100, after: $endCursor) {
+                    pageInfo { hasNextPage endCursor }
+                    nodes { id isMinimized body author { login } }
+                  }
+                }
+              }
+            }' \
+            | jq -r --arg stack "\`$STACK\`" '.data.repository.pullRequest.comments.nodes[]
+                | select(.author.login == "github-actions" and (.isMinimized | not))
+                | select(.body | split("\n")[0] | startswith("### terraform plan") and endswith($stack))
+                | .id' \
+            | while read -r id; do
+              gh api graphql -F id="$id" -f query='
+                mutation($id: ID!) {
+                  minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { clientMutationId }
+                }' > /dev/null
+            done
+
+          {
+            echo "### terraform $TITLE: \`$STACK\`"
+            echo '```'
+            terraform show -no-color tfplan | tail -c 60000
+            echo '```'
+          } > plan.md
+          gh pr comment "$PR" --body-file plan.md
+
+      # a plan without changes has nothing to apply
+      - name: Apply
+        id: apply
+        if: >-
+          steps.plan.outputs.changes == 'true' &&
+          (github.event_name == 'push' || github.event_name == 'issue_comment' || inputs.action == 'apply')
+        run: terraform apply -input=false -lock-timeout=5m tfplan
+
+      - name: Comment the apply result on the PR
+        if: always() && github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.apply.outcome }}
+          CHANGES: ${{ steps.plan.outputs.changes }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$CHANGES" = false ]; then OUTCOME="no changes, nothing to apply"; fi
+          gh pr comment "$PR" --body "terraform apply \`$STACK\`: $OUTCOME, see $RUN"
+
+  # The commit status terraform/applied on the PR commit:
+  # success: no stack has changes, or /apply applied them
+  # pending: a plan has changes, comment /apply
+  # failure: a plan or an apply failed
+  # A required status check on main makes this block the merge (needs GitHub Pro or a public repo).
+  status:
+    needs: [gate, stacks, terraform]
+    if: >-
+      always() && needs.stacks.result == 'success' &&
+      (github.event_name == 'pull_request' || github.event_name == 'issue_comment')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'pull_request' && needs.terraform.result == 'success'
+        with:
+          pattern: plan-result-*
+          merge-multiple: true
+          path: plan-result
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          STACKS: ${{ needs.stacks.outputs.stacks }}
+          RESULT: ${{ needs.terraform.result }}
+          SHA: ${{ github.event.pull_request.head.sha || needs.stacks.outputs.sha }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$STACKS" = "[]" ]; then
+            state=success description="No Terraform changes"
+          elif [ "$RESULT" != success ]; then
+            state=failure
+            description=$([ "$EVENT" = issue_comment ] && echo "The apply failed" || echo "The plan failed")
+          elif [ "$EVENT" = issue_comment ]; then
+            state=success description="Applied with /apply"
+          else
+            changed=$(grep -lx true plan-result/* | xargs -r -n1 basename | tr '\n' ' ')
+            if [ -z "$changed" ]; then
+              state=success description="The plans have no changes"
+            else
+              # a plan run that ends after /apply on the same commit keeps the /apply result
+              current=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/status" \
+                --jq '.statuses[] | select(.context == "terraform/applied") | .description')
+              if [ "$current" = "Applied with /apply" ]; then exit 0; fi
+              state=pending description="Changes in ${changed% }: comment /apply"
+            fi
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state="$state" -f context=terraform/applied \
+            -f description="$description" -f target_url="$RUN" > /dev/null
+          echo "terraform/applied: $state, $description"
