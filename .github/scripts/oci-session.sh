@@ -13,6 +13,10 @@ umask 077
 
 # the values of account A are required, see README.md
 : "${OCI_REGION_A:?}" "${OCI_TENANCY_A:?}" "${OCI_DOMAIN_A:?}" "${OCI_CLIENT_A:?}"
+# with OCI_TENANCY_B, the values of account B are required too
+if [ -n "${OCI_TENANCY_B:-}" ]; then
+  : "${OCI_REGION_B:?}" "${OCI_DOMAIN_B:?}" "${OCI_CLIENT_B:?}"
+fi
 
 dir=$HOME/.oci
 
