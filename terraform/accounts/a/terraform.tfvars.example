@@ -14,6 +14,6 @@ node_boot_volume_size_in_gbs = 75
 # Else they peer with remote peering connections and account B outputs rpc_id.
 account_b_tenancy_id = "ocid1.tenancy.oc1..accountb"
 account_b_region     = "us-chicago-1"
-# output rpc_id or lpg_id of account-b. Leave it out until account B exists.
+# output rpc_id or lpg_id of terraform/accounts/b. Leave it out until account B exists.
 # account_b_rpc_id = "ocid1.remotepeeringconnection.oc1.us-chicago-1.example"
 # account_b_lpg_id = "ocid1.localpeeringgateway.oc1.phx.example"

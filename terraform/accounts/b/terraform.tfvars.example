@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and set your own values.
+tenancy_id           = "ocid1.tenancy.oc1..accountb"
+compartment_id       = "ocid1.tenancy.oc1..accountb"
+account_a_tenancy_id = "ocid1.tenancy.oc1..example"
+# the home regions of both accounts, the same values as region and
+# account_b_region in terraform/accounts/a
+region           = "us-chicago-1"
+account_a_region = "us-phoenix-1"
+ssh_public_key       = "ssh-ed25519 AAAA... you@example.com"
+# OCID of the account A group that runs terraform/accounts/a (group_name there)
+account_a_group_id = "ocid1.group.oc1..example"
+state_namespace    = "your-object-storage-namespace"
