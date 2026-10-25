@@ -12,7 +12,7 @@ gh_org                     = "example-org"
 gh_repository              = "example-live"
 github_app_id              = "123456"
 github_app_installation_id = "12345678"
-region                     = "us-phoenix-1"
+region                     = "us-ashburn-1"
 cluster_domain             = "k8s.example.com"
 
 # the namespace and bucket values in backend.hcl

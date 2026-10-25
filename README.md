@@ -93,7 +93,7 @@ From now on, you change Terraform with a pull request. Read the plan comment, th
 The workflow reads these values. Set them in the root folder of your repository:
 
 ```
-gh variable set OCI_REGION_A --body us-phoenix-1
+gh variable set OCI_REGION_A --body us-ashburn-1
 gh variable set OCI_STATE_NAMESPACE --body <namespace>
 gh variable set OCI_STATE_BUCKET --body terraform-states
 gh variable set OCI_DOMAIN_A --body "$(terraform -chdir=terraform/github-oidc/a output -json github_oidc | jq -r .domain_url)"

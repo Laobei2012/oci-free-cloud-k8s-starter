@@ -3,7 +3,7 @@ compartment_id               = "ocid1.tenancy.oc1..example"
 tenancy_id                   = "ocid1.tenancy.oc1..example"
 ssh_public_key               = "ssh-ed25519 AAAA... you@example.com"
 kubernetes_worker_nodes      = 2
-region                       = "us-phoenix-1"
+region                       = "us-ashburn-1"
 node_memory_in_gbs           = 12
 node_ocpus                   = 2
 node_boot_volume_size_in_gbs = 75
@@ -13,7 +13,7 @@ node_boot_volume_size_in_gbs = 75
 # the VCNs peer with local peering gateways and account B outputs lpg_id.
 # Else they peer with remote peering connections and account B outputs rpc_id.
 # account_b_tenancy_id = "ocid1.tenancy.oc1..accountb"
-# account_b_region     = "us-chicago-1"
+# account_b_region     = "us-sanjose-1"
 # output rpc_id or lpg_id of terraform/accounts/b. Leave it out until account B exists.
-# account_b_rpc_id = "ocid1.remotepeeringconnection.oc1.us-chicago-1.example"
+# account_b_rpc_id = "ocid1.remotepeeringconnection.oc1.us-sanjose-1.example"
 # account_b_lpg_id = "ocid1.localpeeringgateway.oc1.phx.example"
