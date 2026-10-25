@@ -26,12 +26,12 @@ data:
   # load balancer exists. README.md has the commands.
   lb_ip: 203.0.113.10
   lb_security_group_id: ocid1.networksecuritygroup.oc1.phx.example
-  oci_region: us-phoenix-1
+  oci_region: us-ashburn-1
   # The zones of the nodes are <prefix>-AD-1 to -AD-3. Copy the output
   # zone_prefix of terraform/accounts/a and terraform/accounts/b.
-  oci_zone_prefix_a: PHX
+  oci_zone_prefix_a: IAD
   # Only with account B.
-  oci_zone_prefix_b: ORD
+  oci_zone_prefix_b: SJC
   # Optional. Without these values, Loki runs on the OKE nodes and uses the
   # default Longhorn class. With account B, you can move Loki to the account B
   # nodes. Set the values before the first install of Loki, because Kubernetes
@@ -40,5 +40,5 @@ data:
   # loki_node_value: account-b
   # loki_storage_class: longhorn-account-b
   # Each alert carries this name as the label cluster.
-  cluster_name: oci-phx
+  cluster_name: oci-k8s
   oci_object_storage_namespace: examplenamespace

@@ -1,6 +1,6 @@
 # Copy to terraform.tfvars and set your own values.
 tenancy_id = "ocid1.tenancy.oc1..example"
-region     = "us-phoenix-1"
+region     = "us-ashburn-1"
 
 # your copy of the starter, as owner/name
 repository = "example-org/example-live"

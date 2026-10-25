@@ -4,5 +4,5 @@ namespace           = "your-object-storage-namespace"
 bucket              = "terraform-states"
 key                 = "account-a/terraform.tfstate"
 # the home region and the profile of account A
-region              = "us-phoenix-1"
+region              = "us-ashburn-1"
 config_file_profile = "DEFAULT"
